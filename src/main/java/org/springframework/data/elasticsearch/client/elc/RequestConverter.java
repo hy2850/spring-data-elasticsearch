@@ -112,6 +112,7 @@ import org.springframework.util.StringUtils;
  * @author cdalxndr
  * @author scoobyzhang
  * @author Haibo Liu
+ * @author Hyuncheol Park
  * @since 4.4
  */
 class RequestConverter extends AbstractQueryProcessor {
@@ -1487,8 +1488,10 @@ class RequestConverter extends AbstractQueryProcessor {
 			addIndicesOptions(builder, query.getIndicesOptions());
 		}
 
-		if (query.isLimiting()) {
-			builder.size(query.getMaxResults());
+		var maxResults = query.getMaxResults();
+		if (query.isLimiting() && maxResults != null) {
+			var pageSize = Math.min(maxResults, query.getPageable().getPageSize());
+			builder.size(pageSize);
 		}
 
 		if (query.getMinScore() > 0) {

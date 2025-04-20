@@ -15,7 +15,7 @@
  */
 package org.springframework.data.elasticsearch.client.elc;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 
@@ -24,6 +24,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -40,6 +41,7 @@ import org.springframework.lang.Nullable;
 /**
  * @author Peter-Josef Meisch
  * @author Han Seungwoo
+ * @author Hyuncheol Park
  */
 class RequestConverterTest {
 
@@ -87,6 +89,72 @@ class RequestConverterTest {
 			null);
 
 		assertThat(deleteByQueryRequest.refresh()).isTrue();
+	}
+
+	@Test // #3089
+	@DisplayName("When maxResults is set (size < maxResults), pageSize should be the minimum of maxResults and pageable size")
+	void searchRequestPageSizeSmallerThanMaxResults() {
+		var size = 123;
+		var maxResults = size * 12;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(size))
+				.withMaxResults(maxResults)
+				.build();
+
+		var searchRequest = requestConverter.searchRequest(query, null, SampleEntity.class, IndexCoordinates.of("foo"), false, false, null);
+		var actualPageSize = searchRequest.size();
+
+		assertThat(actualPageSize).isEqualTo(size);
+		assertThat(actualPageSize).isNotEqualTo(maxResults);
+	}
+
+	@Test // #3089
+	@DisplayName("When maxResults is set (size == maxResults), pageSize should be equal to maxResults and pageable size")
+	void searchRequestPageSizeEqualToMaxResults() {
+		var pageSize = 123;
+		var maxResults = pageSize;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(pageSize))
+				.withMaxResults(maxResults)
+				.build();
+
+		var searchRequest = requestConverter.searchRequest(query, null, SampleEntity.class, IndexCoordinates.of("foo"), false, false, null);
+		var actualPageSize = searchRequest.size();
+
+		assertThat(actualPageSize).isEqualTo(pageSize);
+		assertThat(actualPageSize).isEqualTo(maxResults);
+	}
+
+	@Test // #3089
+	@DisplayName("When maxResults is set (size > maxResults), pageSize should be the minimum of maxResults and pageable size")
+	void searchRequestPageSizeLargerThanMaxResults() {
+		var pageSize = 123;
+		var maxResults = 99;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(pageSize))
+				.withMaxResults(maxResults)
+				.build();
+
+		var searchRequest = requestConverter.searchRequest(query, null, SampleEntity.class, IndexCoordinates.of("foo"), false, false, null);
+		var actualPageSize = searchRequest.size();
+
+		assertThat(actualPageSize).isNotEqualTo(pageSize);
+		assertThat(actualPageSize).isEqualTo(maxResults);
 	}
 
 	@Document(indexName = "does-not-matter")
