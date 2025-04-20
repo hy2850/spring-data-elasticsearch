@@ -1311,8 +1311,10 @@ class RequestConverter extends AbstractQueryProcessor {
 								bb.storedFields(query.getStoredFields());
 							}
 
-							if (query.isLimiting()) {
-								bb.size(query.getMaxResults());
+							var maxResults = query.getMaxResults();
+							if (query.isLimiting() && maxResults != null) {
+								var pageSize = Math.min(maxResults, query.getPageable().getPageSize());
+								bb.size(pageSize);
 							}
 
 							if (query.getMinScore() > 0) {

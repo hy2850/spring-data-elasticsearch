@@ -92,7 +92,7 @@ class RequestConverterTest {
 	}
 
 	@Test // #3089
-	@DisplayName("When maxResults is set (size < maxResults), pageSize should be the minimum of maxResults and pageable size")
+	@DisplayName("searchRequest() - When maxResults is set (size < maxResults), pageSize should be the minimum of maxResults and pageable size")
 	void searchRequestPageSizeSmallerThanMaxResults() {
 		var size = 123;
 		var maxResults = size * 12;
@@ -114,7 +114,7 @@ class RequestConverterTest {
 	}
 
 	@Test // #3089
-	@DisplayName("When maxResults is set (size == maxResults), pageSize should be equal to maxResults and pageable size")
+	@DisplayName("searchRequest() - When maxResults is set (size == maxResults), pageSize should be equal to maxResults and pageable size")
 	void searchRequestPageSizeEqualToMaxResults() {
 		var pageSize = 123;
 		var maxResults = pageSize;
@@ -136,7 +136,7 @@ class RequestConverterTest {
 	}
 
 	@Test // #3089
-	@DisplayName("When maxResults is set (size > maxResults), pageSize should be the minimum of maxResults and pageable size")
+	@DisplayName("searchRequest() - When maxResults is set (size > maxResults), pageSize should be the minimum of maxResults and pageable size")
 	void searchRequestPageSizeLargerThanMaxResults() {
 		var pageSize = 123;
 		var maxResults = 99;
@@ -154,6 +154,87 @@ class RequestConverterTest {
 		var actualPageSize = searchRequest.size();
 
 		assertThat(actualPageSize).isNotEqualTo(pageSize);
+		assertThat(actualPageSize).isEqualTo(maxResults);
+	}
+
+	@Test // #3089
+	@DisplayName("searchMsearchRequest() - When maxResults is set (size < maxResults), pageSize should be the minimum of maxResults and pageable size")
+	void msearchRequestPageSizeSmallerThanMaxResults() {
+		var size = 100;
+		var maxResults = 150;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(size))
+				.withMaxResults(maxResults)
+				.build();
+
+		var multiSearchQueryParameter = new ElasticsearchTemplate.MultiSearchQueryParameter(query, SampleEntity.class, IndexCoordinates.of("foo"));
+		var multiSearchQueryParameters = List.of(multiSearchQueryParameter);
+
+		var msearchRequest = requestConverter.searchMsearchRequest(multiSearchQueryParameters, null);
+
+		var searchBody = msearchRequest.searches().get(0).body();
+		var actualPageSize = searchBody.size();
+
+		assertThat(actualPageSize).isEqualTo(size);
+		assertThat(actualPageSize).isNotEqualTo(maxResults);
+	}
+
+	@Test // #3089
+	@DisplayName("searchMsearchRequest() - When maxResults is set (size == maxResults), pageSize should be equal to maxResults and pageable size")
+	void msearchRequestPageSizeEqualToMaxResults() {
+		var size = 150;
+		var maxResults = size;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(size))
+				.withMaxResults(maxResults)
+				.build();
+
+		var multiSearchQueryParameter = new ElasticsearchTemplate.MultiSearchQueryParameter(query, SampleEntity.class, IndexCoordinates.of("foo"));
+		var multiSearchQueryParameters = List.of(multiSearchQueryParameter);
+
+		var msearchRequest = requestConverter.searchMsearchRequest(multiSearchQueryParameters, null);
+
+		var searchBody = msearchRequest.searches().get(0).body();
+		var actualPageSize = searchBody.size();
+
+		assertThat(actualPageSize).isEqualTo(size);
+		assertThat(actualPageSize).isEqualTo(maxResults);
+	}
+
+	@Test // #3089
+	@DisplayName("searchMsearchRequest() - When maxResults is set (size > maxResults), pageSize should be the minimum of maxResults and pageable size")
+	void msearchRequestPageSizeLargerThanMaxResults() {
+		var size = 200;
+		var maxResults = 150;
+
+		var query = StringQuery.builder("""
+					{
+						"match_all":{}
+					}
+					""")
+				.withPageable(Pageable.ofSize(size))
+				.withMaxResults(maxResults)
+				.build();
+
+		var multiSearchQueryParameter = new ElasticsearchTemplate.MultiSearchQueryParameter(query, SampleEntity.class, IndexCoordinates.of("foo"));
+		var multiSearchQueryParameters = List.of(multiSearchQueryParameter);
+
+		var msearchRequest = requestConverter.searchMsearchRequest(multiSearchQueryParameters, null);
+
+		var searchBody = msearchRequest.searches().get(0).body();
+		var actualPageSize = searchBody.size();
+
+		assertThat(actualPageSize).isNotEqualTo(size);
 		assertThat(actualPageSize).isEqualTo(maxResults);
 	}
 
